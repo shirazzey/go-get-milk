@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Maze Race</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  background: black;
+  color: white;
+    }
+ #game-board {
+  display: grid;
+  grid-template-columns: repeat(15, 60px);
+  grid-template-rows: repeat(15, 60px);
+  gap: 2px;
+  margin: 20px 0;
+}
+   .cell {
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2); 
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); 
+}
+   .wall {
+  background: #fff;
+  box-shadow: 0 0 10px #fff, 0 0 20px #aaa;
+  border-radius: 4px;
+}
+
+    .destination {
+  width: 44px;
+  height: 44px;
+  background: gold;
+  box-shadow: 0 0 10px gold, 0 0 20px gold;
+  border-radius: 4px;
+}
+
+  
+  
+    #controls { display: flex; gap: 15px; }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      background: #1abc9c;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #16a085; }
+  </style>
+</head>
+<body>
+  <h1>divorce papers</h1>
+  <div id="game-board"></div>
+  <div id="controls">
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+  <script>
+    const rows = 15, cols = 15;
+    const board = document.getElementById("game-board");
+    let grid, playerPos, botPos, destination, path, gameRunning, botInterval;
+
+    function generateMaze() {
+      playerPos = { row: 0, col: 0 };
+      botPos = { row: 0, col: 0 };
+      destination = { row: rows - 1, col: cols - 1 };
+
+      grid = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+      let r = 0, c = 0;
+      grid[r][c] = 0;
+
+      let straightCount = 0;
+      let lastDir = null;
+      let moveHistory = [];
+
+      while (r < rows - 1 || c < cols - 1) {
+        let possibleMoves = [];
+
+        if (r < rows - 1) possibleMoves.push("DOWN");
+        if (c < cols - 1) possibleMoves.push("RIGHT");
+
+        if (straightCount >= 4 && possibleMoves.length > 1) {
+          possibleMoves = possibleMoves.filter(dir => dir !== lastDir);
+          straightCount = 0;
+        }
+
+        if (moveHistory.length >= 4) {
+          let last4 = moveHistory.slice(-4);
+          let isDiagonalStair =
+            last4.join("") === "DOWNRIGHTDOWNRIGHT" ||
+            last4.join("") === "RIGHTDOWNRIGHTDOWN";
+          if (isDiagonalStair && possibleMoves.length > 1) {
+            possibleMoves = [lastDir]; 
+          }
+        }
+
+        let move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        if (move === "DOWN") r++;
+        if (move === "RIGHT") c++;
+
+        grid[r][c] = 0;
+
+        if (move === lastDir) straightCount++;
+        else straightCount = 1;
+
+        lastDir = move;
+        moveHistory.push(move);
+      }
+
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          if (!(i === 0 && j === 0) && !(i === rows-1 && j === cols-1)) {
+            if (grid[i][j] !== 0) grid[i][j] = Math.random() < 0.7 ? 1 : 0;
+          }
+        }
+      }
+
+      grid[0][0] = 0;
+      grid[rows-1][cols-1] = 0;
+    }
+
+    function dijkstra() {
+      let dist = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
+      let prev = Array.from({ length: rows }, () => Array(cols).fill(null));
+      let pq = [{ row: 0, col: 0, dist: 0 }];
+      dist[0][0] = 0;
+      const directions = [[1,0],[-1,0],[0,1],[0,-1]];
+
+      while (pq.length > 0) {
+        pq.sort((a,b) => a.dist - b.dist);
+        let { row, col, dist: d } = pq.shift();
+        if (row === destination.row && col === destination.col) break;
+
+        for (let [dr,dc] of directions) {
+          let nr = row+dr, nc = col+dc;
+          if (nr>=0 && nr<rows && nc>=0 && nc<cols && grid[nr][nc]===0) {
+            if (d+1 < dist[nr][nc]) {
+              dist[nr][nc] = d+1;
+              prev[nr][nc] = { row, col };
+              pq.push({ row:nr, col:nc, dist:d+1 });
+            }
+          }
+        }
+      }
+
+      let path = [];
+      let cur = destination;
+      while (cur) {
+        path.push(cur);
+        cur = prev[cur.row][cur.col];
+      }
+      return path.reverse();
+    }
+
+    function renderBoard() {
+      board.innerHTML = "";
+      board.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
+      board.style.gridTemplateRows = `repeat(${rows}, 60px)`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          if (grid[r][c] === 1) cell.classList.add("wall");
+          if (r === destination.row && c === destination.col) {
+  cell.classList.add("destination");
+}
+
+if (r === playerPos.row && c === playerPos.col) {
+  let img = document.createElement("img");
+  img.src = "6951487_preview (1).png";   
+  img.style.width = "70px";        
+  img.style.height = "70px";
+  cell.appendChild(img);
+}
+
+if (r === botPos.row && c === botPos.col) {
+  let img = document.createElement("img");
+  img.src = "pngaaa.com-51246.png";     
+  img.style.width = "65px";
+  img.style.height = "65px";
+  cell.appendChild(img);
+}
+
+          board.appendChild(cell);
+        }
+      }
+    }
+
+   
+    function movePlayer(dr, dc) {
+      if (!gameRunning) return;
+      let nr = playerPos.row+dr, nc = playerPos.col+dc;
+      if (nr>=0 && nr<rows && nc>=0 && nc<cols && grid[nr][nc]===0) {
+        playerPos = { row:nr, col:nc };
+        checkWin();
+      }
+      renderBoard();
+    }
+
+    function startBot() {
+      let step = 0;
+      botInterval = setInterval(() => {
+        if (!gameRunning) return;
+        if (step < path.length) {
+          botPos = path[step];
+          step++;
+          renderBoard();
+          checkWin();
+        } else {
+          clearInterval(botInterval);
+        }
+      }, 175); 
+    }
+
+    function checkWin() {
+      if (playerPos.row === destination.row && playerPos.col === destination.col) {
+        alert("Kanye won! 🏆");
+        gameRunning = false; clearInterval(botInterval);
+      }
+      if (botPos.row === destination.row && botPos.col === destination.col) {
+        alert("Kim K won!");
+        gameRunning = false; clearInterval(botInterval);
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (!gameRunning) return;
+      if (e.key==="w"||e.key==="W") movePlayer(-1,0);
+      if (e.key==="s"||e.key==="S") movePlayer(1,0);
+      if (e.key==="a"||e.key==="A") movePlayer(0,-1);
+      if (e.key==="d"||e.key==="D") movePlayer(0,1);
+    });
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      generateMaze();
+      path = dijkstra();
+      playerPos = { row:0, col:0 };
+      botPos = { row:0, col:0 };
+      renderBoard();
+      gameRunning = true;
+      startBot();
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => gameRunning=!gameRunning);
+    document.getElementById("restartBtn").addEventListener("click", () => location.reload());
+
+    generateMaze(); renderBoard();
+  </script>
+</body>
+</html>
