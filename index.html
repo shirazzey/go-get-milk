@@ -6,46 +6,42 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  margin: 0;
-  background: black;
-  color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: black;
+      color: white;
     }
- #game-board {
-  display: grid;
-  grid-template-columns: repeat(15, 60px);
-  grid-template-rows: repeat(15, 60px);
-  gap: 2px;
-  margin: 20px 0;
-}
-   .cell {
-  background: black;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.2); 
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); 
-}
-   .wall {
-  background: #fff;
-  box-shadow: 0 0 10px #fff, 0 0 20px #aaa;
-  border-radius: 4px;
-}
-
+    #game-board {
+      display: grid;
+      grid-template-columns: repeat(15, 60px);
+      grid-template-rows: repeat(15, 60px);
+      gap: 2px;
+      margin: 20px 0;
+    }
+    .cell {
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2); 
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.1); 
+    }
+    .wall {
+      background: #fff;
+      box-shadow: 0 0 10px #fff, 0 0 20px #aaa;
+      border-radius: 4px;
+    }
     .destination {
-  width: 44px;
-  height: 44px;
-  background: gold;
-  box-shadow: 0 0 10px gold, 0 0 20px gold;
-  border-radius: 4px;
-}
-
-  
-  
+      width: 44px;
+      height: 44px;
+      background: gold;
+      box-shadow: 0 0 10px gold, 0 0 20px gold;
+      border-radius: 4px;
+    }
     #controls { display: flex; gap: 15px; }
     button {
       padding: 10px 20px;
@@ -62,17 +58,22 @@
   </style>
 </head>
 <body>
+  <audio id="background-music" src="ScreenRecording_09-21-2025 15-43-43_1.mp3" loop></audio>
+
   <h1>Split&Sprint</h1>
   <div id="game-board"></div>
   <div id="controls">
     <button id="startBtn">Start</button>
     <button id="pauseBtn">Pause</button>
     <button id="restartBtn">Restart</button>
+    <button id="muteBtn">Mute</button>
   </div>
 
   <script>
     const rows = 15, cols = 15;
     const board = document.getElementById("game-board");
+    const backgroundMusic = document.getElementById("background-music");
+    const muteBtn = document.getElementById("muteBtn");
     let grid, playerPos, botPos, destination, path, gameRunning, botInterval;
 
     function generateMaze() {
@@ -91,7 +92,6 @@
 
       while (r < rows - 1 || c < cols - 1) {
         let possibleMoves = [];
-
         if (r < rows - 1) possibleMoves.push("DOWN");
         if (c < cols - 1) possibleMoves.push("RIGHT");
 
@@ -178,32 +178,29 @@
           const cell = document.createElement("div");
           cell.classList.add("cell");
           if (grid[r][c] === 1) cell.classList.add("wall");
-          if (r === destination.row && c === destination.col) {
-  cell.classList.add("destination");
-}
+          if (r === destination.row && c === destination.col) cell.classList.add("destination");
 
-if (r === playerPos.row && c === playerPos.col) {
-  let img = document.createElement("img");
-  img.src = "6951487_preview (1).png";   
-  img.style.width = "70px";        
-  img.style.height = "70px";
-  cell.appendChild(img);
-}
+          if (r === playerPos.row && c === playerPos.col) {
+            let img = document.createElement("img");
+            img.src = "6951487_preview (1).png";   
+            img.style.width = "70px";        
+            img.style.height = "70px";
+            cell.appendChild(img);
+          }
 
-if (r === botPos.row && c === botPos.col) {
-  let img = document.createElement("img");
-  img.src = "pngaaa.com-51246.png";     
-  img.style.width = "65px";
-  img.style.height = "65px";
-  cell.appendChild(img);
-}
+          if (r === botPos.row && c === botPos.col) {
+            let img = document.createElement("img");
+            img.src = "pngaaa.com-51246.png";     
+            img.style.width = "65px";
+            img.style.height = "65px";
+            cell.appendChild(img);
+          }
 
           board.appendChild(cell);
         }
       }
     }
 
-   
     function movePlayer(dr, dc) {
       if (!gameRunning) return;
       let nr = playerPos.row+dr, nc = playerPos.col+dc;
@@ -231,12 +228,14 @@ if (r === botPos.row && c === botPos.col) {
 
     function checkWin() {
       if (playerPos.row === destination.row && playerPos.col === destination.col) {
-        alert("You WIN!!   GGs  🏆");
-        gameRunning = false; clearInterval(botInterval);
+        alert("You WIN!!  WELL PLAYED!! 🏆");
+        gameRunning = false; 
+        clearInterval(botInterval);
       }
       if (botPos.row === destination.row && botPos.col === destination.col) {
-        alert("Kim K WINS! kys");
-        gameRunning = false; clearInterval(botInterval);
+        alert("Kim K WINS   kys!");
+        gameRunning = false; 
+        clearInterval(botInterval);
       }
     }
 
@@ -249,6 +248,22 @@ if (r === botPos.row && c === botPos.col) {
     });
 
     document.getElementById("startBtn").addEventListener("click", () => {
+      if (botInterval) clearInterval(botInterval);
+      generateMaze();
+      path = dijkstra();
+      playerPos = { row:0, col:0 };
+      botPos = { row:0, col:0 };
+      renderBoard();
+      gameRunning = true;
+      startBot();
+      if (backgroundMusic.paused) backgroundMusic.play().catch(err => console.log(err));
+    });
+
+    
+    document.getElementById("pauseBtn").addEventListener("click", () => gameRunning=!gameRunning);
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      if (botInterval) clearInterval(botInterval);
       generateMaze();
       path = dijkstra();
       playerPos = { row:0, col:0 };
@@ -258,13 +273,13 @@ if (r === botPos.row && c === botPos.col) {
       startBot();
     });
 
-    document.getElementById("pauseBtn").addEventListener("click", () => gameRunning=!gameRunning);
-    document.getElementById("restartBtn").addEventListener("click", () => location.reload());
+    muteBtn.addEventListener("click", () => {
+      backgroundMusic.muted = !backgroundMusic.muted;
+      muteBtn.textContent = backgroundMusic.muted ? "Unmute" : "Mute";
+    });
 
-    generateMaze(); renderBoard();
+    generateMaze();
+    renderBoard();
   </script>
 </body>
 </html>
-
-
-
